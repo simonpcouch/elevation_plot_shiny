@@ -7,7 +7,8 @@ library(rayshader)
 library(elevatr)
 library(tidyverse)
 library(raster)
-data(iris)
+library(imager)
+library(png)
 
 # center_lat (numeric) is the latitude coordinate of the center
 # center_lon (numeric) is the longitude coordinate of the center
@@ -80,14 +81,16 @@ ui <- fluidPage(
   fluidRow(
     sidebarLayout(
       sidebarPanel(
+        # subsection of the sidebar: geo options (takes more time)
+        h3("Geographical Options"),
         # A numeric input box for the center latitude point
-        numericInput(inputId = "lat",
+        numericInput(inputId = "center_lat",
                      label = "Center Latitude Point:",
                      value = 45.373601,
                      min = -90,
                      max = 90),
         # A numeric input box for the center latitude point
-        numericInput(inputId = "lon",
+        numericInput(inputId = "center_lon",
                      label = "Center Longitude Point:",
                      value = 45.373601,
                      min = -90,
@@ -95,40 +98,88 @@ ui <- fluidPage(
         # A slider input box for the plot radius
         sliderInput(inputId = "radius",
                     label = "Radius (in miles)",
-                    value = 4,
+                    value = 1,
                     min = .1,
                     max = 10),
+        # Wait to regrab all the data based on the parameters above
+        # until the user says they're ready--this rerender will
+        # take longer than the one below
         actionButton(inputId = "go_button",
                      label = "Go!"),
         helpText("Press this button once you have all the numbers
                  above set to where you want them!"),
+        # subsection of the sidebar: plotting options (takes less time)
+        h3("Plotting Options"),
+        # adjust the zscale of the plot
         sliderInput(inputId = "z_scale",
                     label = "Height Scale",
                     value = 40,
                     min = .1,
                     max = 100),
+        # cite the elevatr data source
         helpText("Data Source: Mapzen AWS Terrain Tiles")),
       # The main panel of the page is the plot
-      mainPanel(plotOutput("plot")))),
+      mainPanel(imageOutput("plot")))),
   theme = "style.css")
 
 
 
 # Server (Backend) ----------------------------------------------------------
-server <- function(input, output){
+server <- function(input, output) {
   # These are the user inputs; default to mt. hood
   reactive_vals <- reactiveValues(height_scale = 40,
                                   center_lat = 45.373601, 
                                   center_lon = -121.695942, 
-                                  radius = 4)
+                                  radius = 1,
+                                  elev_data = NULL)
  
   # Only react to input changes when the go button is pressed
   observeEvent(input$go_button, { 
-    output$plot <- renderPlot({
-      ggplot(iris) +
-        aes(x = Sepal.Length, y = Sepal.Width) +
-        geom_point()
-    })})
+    # In that case, render the plot!
+    output$plot <- renderImage({
+      withProgress(message = "One sec!",
+                   detail = "Downloading data...", {
+      
+        # grab the elevation data
+        reactive_vals$elev_data <- elev_matrix(center_lat = reactive_vals$center_lat,
+                                               center_lon = reactive_vals$center_lon,
+                                               radius = reactive_vals$radius)
+        
+        print(class(reactive_vals$elev_data))
+        
+        # plot the elevation data and save it as a png
+        sphere_shade(reactive_vals$elev_data, 
+                     texture = "imhof2", 
+                     sunangle = 70) %>%
+        #plot_3d(reactive_vals$elev_data, 
+        #        zscale = reactive_vals$height_scale, 
+        #        theta = 220, 
+        #        phi = 20) %>%
+        #plot_map() %>%
+        #array(t(.[,ncol(.):1]),
+        #      dim = c(ncol(.), 
+        #              nrow(.), 
+        #              3)) %>%
+        save_png(filename = "output_plot.png")
+          
+
+        # return a list with the filepath to the plot png
+        list(src = "output_plot.png")
+        
+        # load the png as an object, delete the file, and then return the object
+        # (this is hacky, for sure. would be great to be able to convert the 
+        # rayshader object straight to a .png)
+        #output_plot <- load.image("output_plot.png")
+        #unlink("output_plot.png")
+        #output_plot
+        
+      # The end of the withProgress call
+      })
+    # The end of the renderImage call
+    }, deleteFile = FALSE)
+  # The end of the observeEvent call
+  })
+# The end of the server call
 }
 
 # Run the app
