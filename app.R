@@ -82,7 +82,7 @@ ui <- fluidPage(
     sidebarLayout(
       sidebarPanel(
         # subsection of the sidebar: geo options (takes more time)
-        h3("Geographical Options"),
+#        h3("Geographical Options"),
         # A numeric input box for the center latitude point
         numericInput(inputId = "center_lat",
                      label = "Center Latitude Point:",
@@ -109,13 +109,13 @@ ui <- fluidPage(
         helpText("Press this button once you have all the numbers
                  above set to where you want them!"),
         # subsection of the sidebar: plotting options (takes less time)
-        h3("Plotting Options"),
+#        h3("Plotting Options"),
         # adjust the zscale of the plot
-        sliderInput(inputId = "z_scale",
-                    label = "Height Scale",
-                    value = 40,
-                    min = .1,
-                    max = 100),
+#        sliderInput(inputId = "z_scale",
+#                    label = "Height Scale",
+#                    value = 40,
+#                    min = .1,
+#                    max = 100),
         # cite the elevatr data source
         helpText("Data Source: Mapzen AWS Terrain Tiles")),
       # The main panel of the page is the plot
@@ -145,34 +145,33 @@ server <- function(input, output) {
                                                center_lon = reactive_vals$center_lon,
                                                radius = reactive_vals$radius)
         
-        print(class(reactive_vals$elev_data))
         
         # plot the elevation data and save it as a png
         sphere_shade(reactive_vals$elev_data, 
                      texture = "imhof2", 
                      sunangle = 70) %>%
+        # Would be great to make this an interactive 3d plot
+        # but X11 doesn't seem to play nice with Shiny.
         #plot_3d(reactive_vals$elev_data, 
         #        zscale = reactive_vals$height_scale, 
         #        theta = 220, 
         #        phi = 20) %>%
-        #plot_map() %>%
-        #array(t(.[,ncol(.):1]),
-        #      dim = c(ncol(.), 
-        #              nrow(.), 
-        #              3)) %>%
         save_png(filename = "output_plot.png")
-          
-
+        
+        # read in the plot
+        #output_plot <- load.image("output_plot.png")
+        
+        # resize it to a square
+        #output_plot <- resize(output_plot, 300, 300) %>%
+        #               matrix()
+        
+        # save the plot again
+        #writePNG(output_plot, "output_plot.png")
+        
+        
         # return a list with the filepath to the plot png
         list(src = "output_plot.png")
-        
-        # load the png as an object, delete the file, and then return the object
-        # (this is hacky, for sure. would be great to be able to convert the 
-        # rayshader object straight to a .png)
-        #output_plot <- load.image("output_plot.png")
-        #unlink("output_plot.png")
-        #output_plot
-        
+      
       # The end of the withProgress call
       })
     # The end of the renderImage call
