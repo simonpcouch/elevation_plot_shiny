@@ -159,14 +159,13 @@ server <- function(input, output) {
         save_png(filename = "output_plot.png")
         
         # read in the plot
-        #output_plot <- load.image("output_plot.png")
+        output_plot <- load.image("output_plot.png")
         
         # resize it to a square
-        #output_plot <- resize(output_plot, 300, 300) %>%
-        #               matrix()
+        output_plot <- resize(output_plot, 400, 400)
         
         # save the plot again
-        #writePNG(output_plot, "output_plot.png")
+        save.image(output_plot, "output_plot.png")
         
         
         # return a list with the filepath to the plot png
