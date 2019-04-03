@@ -75,7 +75,7 @@ elev_matrix <- function(center_lat, center_lon, radius) {
 ui <- fluidPage(
   
   # Add a title
-  titlePanel("3D Elevation Plotting Tool"),
+  titlePanel("Elevation Map Maker"),
   
   # This sidebar is where the user can make plot choices
   fluidRow(
@@ -92,7 +92,7 @@ ui <- fluidPage(
         # A numeric input box for the center latitude point
         numericInput(inputId = "center_lon",
                      label = "Center Longitude Point:",
-                     value = 45.373601,
+                     value = -121.695942,
                      min = -90,
                      max = 90),
         # A slider input box for the plot radius
@@ -106,8 +106,10 @@ ui <- fluidPage(
         # take longer than the one below
         actionButton(inputId = "go_button",
                      label = "Go!"),
-        helpText("Press this button once you have all the numbers
-                 above set to where you want them!"),
+        helpText("Press \"Go!\" once you have all the numbers
+                 above set to where you want them! Once you've pressed \"Go!\",
+                 you can download the High-Res version of the map below."),
+        downloadButton('DLDat', 'Download High-Res Map'),
         # subsection of the sidebar: plotting options (takes less time)
 #        h3("Plotting Options"),
         # adjust the zscale of the plot
@@ -126,25 +128,28 @@ ui <- fluidPage(
 
 # Server (Backend) ----------------------------------------------------------
 server <- function(input, output) {
+ 
   # These are the user inputs; default to mt. hood
-  reactive_vals <- reactiveValues(height_scale = 40,
+  reactive_vals <- reactiveValues(#height_scale = 40,
                                   center_lat = 45.373601, 
                                   center_lon = -121.695942, 
                                   radius = 1,
                                   elev_data = NULL)
- 
+  
   # Only react to input changes when the go button is pressed
   observeEvent(input$go_button, { 
+    
     # In that case, render the plot!
     output$plot <- renderImage({
       withProgress(message = "One sec!",
                    detail = "Downloading data...", {
       
-        # grab the elevation data
-        reactive_vals$elev_data <- elev_matrix(center_lat = reactive_vals$center_lat,
-                                               center_lon = reactive_vals$center_lon,
-                                               radius = reactive_vals$radius)
         
+        # grab the elevation data (but don't react to 
+        # changes in input immediately)
+        reactive_vals$elev_data <- elev_matrix(center_lat = isolate(input$center_lat),
+                                               center_lon = isolate(input$center_lon),
+                                               radius = isolate(input$radius))
         
         # plot the elevation data and save it as a png
         sphere_shade(reactive_vals$elev_data, 
@@ -161,12 +166,23 @@ server <- function(input, output) {
         # read in the plot
         output_plot <- load.image("output_plot.png")
         
+        # Give the option to download the raw image file (as a square)
+        output$DLDat <- downloadHandler(filename = "elevation_map.png",
+                                        content = function(file) {
+                                          save.image(resize(output_plot,
+                                                            min(dim(output_plot)[1],
+                                                                dim(output_plot)[2]),
+                                                            min(dim(output_plot)[1],
+                                                                dim(output_plot)[2])),
+                                                     file)
+                                          }
+                                        )
+        
         # resize it to a square
-        output_plot <- resize(output_plot, 400, 400)
+        output_plot_resized <- resize(output_plot, 480, 480)
         
         # save the plot again
-        save.image(output_plot, "output_plot.png")
-        
+        save.image(output_plot_resized, "output_plot.png")
         
         # return a list with the filepath to the plot png
         list(src = "output_plot.png")
@@ -177,6 +193,7 @@ server <- function(input, output) {
     }, deleteFile = FALSE)
   # The end of the observeEvent call
   })
+  
 # The end of the server call
 }
 
