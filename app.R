@@ -50,7 +50,7 @@ elev_matrix <- function(center_lat, center_lon, radius) {
   
   elevation <- get_elev_raster(locations = geo_bounds,
                                prj = prj,
-                               z = 14,
+                               z = 15 - round(radius / 2),
                                clip = "bbox",
                                verbose = FALSE)
   
@@ -99,7 +99,7 @@ ui <- fluidPage(
         sliderInput(inputId = "radius",
                     label = "Radius (in miles)",
                     value = 1,
-                    min = .1,
+                    min = 1,
                     max = 10),
         # Wait to regrab all the data based on the parameters above
         # until the user says they're ready--this rerender will
